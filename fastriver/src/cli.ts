@@ -3,10 +3,16 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
-import { existsSync } from 'fs';
-import { resolve } from 'path';
+import { existsSync, readFileSync } from 'fs';
+import { resolve, dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { processDirectory, getPhotosInDir, getSubdirs, sanitizeRepoName } from './index.js';
 import { execSync } from 'child_process';
+
+// Get version from package.json dynamically
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJson = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
 
 const program = new Command();
 
@@ -32,7 +38,7 @@ function printDivider() {
 program
   .name('i4tow')
   .description('Create photo albums backed by GitHub repos')
-  .version('0.0.14', '-v, --version')
+  .version(packageJson.version, '-v, --version')
   .option('-t, --token <token>', 'GitHub token (or set GITHUB_TOKEN env)')
   .option('-u, --username <username>', 'GitHub username')
   .option('-d, --dry-run', 'Preview without making changes')
