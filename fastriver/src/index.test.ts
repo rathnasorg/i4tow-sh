@@ -70,6 +70,11 @@ describe('isPhotoFile', () => {
     expect(isPhotoFile('photo.webp')).toBe(true);
   });
 
+  it('should return true for gif files', () => {
+    expect(isPhotoFile('photo.gif')).toBe(true);
+    expect(isPhotoFile('photo.GIF')).toBe(true);
+  });
+
   it('should return false for non-photo files', () => {
     expect(isPhotoFile('document.pdf')).toBe(false);
     expect(isPhotoFile('video.mp4')).toBe(false);
@@ -188,7 +193,9 @@ describe('createAlbum', () => {
     expect(result).toEqual({
       name: 'i4tow-MyAlbum',
       repoUrl: 'https://github.com/testuser/i4tow-MyAlbum',
+      albumUrl: 'https://rathnasorg.github.io/i4tow/a/i4tow-MyAlbum',
       success: true,
+      photoCount: 2,
     });
     expect(mockFetch).not.toHaveBeenCalled();
   });
@@ -268,7 +275,19 @@ describe('createAlbum', () => {
     });
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe('Bad credentials');
+    expect(result.error).toBe('Invalid GitHub token. Check your token and try again.');
+  });
+
+  it('should handle network errors gracefully', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('fetch failed'));
+
+    const result = await createAlbum('/photos', 'MyAlbum', {
+      token: 'test-token',
+      username: 'testuser',
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Network error. Check your internet connection.');
   });
 
   it('should clone template repo with depth 1', async () => {
@@ -308,8 +327,60 @@ describe('createAlbum', () => {
       'https://testuser:test-token@github.com/testuser/i4tow-MyAlbum.git'
     );
     expect(git.add).toHaveBeenCalledWith('.');
-    expect(git.commit).toHaveBeenCalledWith(expect.stringContaining('photos added @'));
-    expect(git.push).toHaveBeenCalledWith('origin', 'main', ['--set-upstream']);
+    expect(git.commit).toHaveBeenCalledWith(expect.stringContaining('photos added via i4tow'));
+    expect(git.push).toHaveBeenCalledWith('origin', 'main', ['--set-upstream', '--force']);
+  });
+
+  it('should return error when no photos in directory', async () => {
+    vi.mocked(readdirSync).mockReturnValue([] as any);
+
+    const result = await createAlbum('/empty', 'MyAlbum', {
+      token: 'test-token',
+      username: 'testuser',
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('No photos found in directory');
+    expect(result.photoCount).toBe(0);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('should handle git clone failure', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ id: 123 }),
+    });
+
+    const git = simpleGit();
+    vi.mocked(git.clone).mockRejectedValueOnce(new Error('Failed to clone'));
+
+    const result = await createAlbum('/photos', 'MyAlbum', {
+      token: 'test-token',
+      username: 'testuser',
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Failed to clone');
+  });
+
+  it('should call onProgress callback during processing', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ id: 123 }),
+    });
+
+    const progressCalls: string[] = [];
+    await createAlbum('/photos', 'MyAlbum', {
+      token: 'test-token',
+      username: 'testuser',
+      onProgress: (step) => progressCalls.push(step),
+    });
+
+    expect(progressCalls).toContain('Creating repository');
+    expect(progressCalls).toContain('Downloading template');
+    expect(progressCalls).toContain('Preparing album');
+    expect(progressCalls).toContain('Copying photos');
+    expect(progressCalls).toContain('Uploading to GitHub');
   });
 
   it('should copy photos to public/photos/raw2', async () => {
@@ -327,7 +398,7 @@ describe('createAlbum', () => {
       expect.stringContaining(join('public', 'photos', 'raw2')),
       { recursive: true }
     );
-    expect(cpSync).toHaveBeenCalledTimes(3); // 2 photos + 1 .git backup
+    expect(cpSync).toHaveBeenCalledTimes(2); // 2 photos
   });
 });
 
