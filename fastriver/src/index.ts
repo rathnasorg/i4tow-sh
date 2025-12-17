@@ -2,6 +2,7 @@ import { simpleGit } from 'simple-git';
 import { existsSync, readdirSync, statSync, cpSync, mkdirSync, rmSync } from 'fs';
 import { join, basename } from 'path';
 import { tmpdir } from 'os';
+import nacl from 'tweetnacl';
 
 export interface AlbumOptions {
   token: string;
@@ -139,6 +140,65 @@ async function createGitHubRepo(
   }
 }
 
+async function createRepoSecret(
+  repoOwner: string,
+  repoName: string,
+  secretName: string,
+  secretValue: string,
+  token: string
+): Promise<{ success: boolean; error?: string }> {
+  const headers = {
+    Authorization: `token ${token}`,
+    'Content-Type': 'application/json',
+    'User-Agent': 'i4tow-cli',
+  };
+
+  try {
+    // Step 1: Get the repository's public key
+    const keyResponse = await fetch(
+      `https://api.github.com/repos/${repoOwner}/${repoName}/actions/secrets/public-key`,
+      { headers }
+    );
+
+    if (!keyResponse.ok) {
+      return { success: false, error: 'Failed to get repository public key' };
+    }
+
+    const keyData = (await keyResponse.json()) as { key: string; key_id: string };
+
+    // Step 2: Encrypt the secret using libsodium sealed box
+    const publicKey = Buffer.from(keyData.key, 'base64');
+    const secretBytes = Buffer.from(secretValue);
+    const encryptedBytes = nacl.sealedBox.seal(secretBytes, publicKey);
+    const encryptedValue = Buffer.from(encryptedBytes).toString('base64');
+
+    // Step 3: Create/update the secret
+    const secretResponse = await fetch(
+      `https://api.github.com/repos/${repoOwner}/${repoName}/actions/secrets/${secretName}`,
+      {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          encrypted_value: encryptedValue,
+          key_id: keyData.key_id,
+        }),
+      }
+    );
+
+    if (!secretResponse.ok) {
+      const errorData = (await secretResponse.json()) as { message?: string };
+      return { success: false, error: errorData.message || 'Failed to create secret' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    if (error instanceof Error) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: 'Unknown error creating secret' };
+  }
+}
+
 export async function createAlbum(
   sourceDir: string,
   repoName: string,
@@ -247,6 +307,14 @@ export async function createAlbum(
         progress('Retrying push', `Attempt ${pushAttempts + 1}/${maxAttempts}...`);
         await sleep(2000);
       }
+    }
+
+    // Step 6: Create DEPLOY_TOKEN secret for GitHub Actions
+    progress('Setting up Actions', 'Creating deploy token...');
+    const secretResult = await createRepoSecret(username, fullRepoName, 'DEPLOY_TOKEN', token, token);
+    if (!secretResult.success) {
+      // Non-fatal: workflow may still work with GITHUB_TOKEN
+      progress('Warning', `Could not create deploy secret: ${secretResult.error}`);
     }
 
     // Cleanup temp dir
