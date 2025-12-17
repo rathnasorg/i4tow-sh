@@ -1,6 +1,6 @@
 {
   "name": "@rathnasorg/i4tow",
-  "version": "0.0.10",
+  "version": "0.0.13",
   "description": "CLI tool to create photo albums backed by GitHub repos",
   "type": "module",
   "bin": {
@@ -9,7 +9,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "build": "tsup src/cli.ts src/index.ts --format esm --dts --clean",

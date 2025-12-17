@@ -22,6 +22,8 @@ export interface AlbumResult {
 const TEMPLATE_REPO = 'https://github.com/rathnasorg/i4tow-album.git';
 const PHOTO_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.heic', '.webp', '.gif'];
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export function isPhotoFile(filename: string): boolean {
   const ext = filename.toLowerCase().slice(filename.lastIndexOf('.'));
   return PHOTO_EXTENSIONS.includes(ext);
@@ -65,16 +67,37 @@ export function sanitizeRepoName(name: string): string {
 
 async function createGitHubRepo(
   name: string,
-  token: string
+  token: string,
+  username: string
 ): Promise<{ success: boolean; error?: string; alreadyExists?: boolean }> {
+  const headers = {
+    Authorization: `token ${token}`,
+    'Content-Type': 'application/json',
+    'User-Agent': 'i4tow-cli',
+  };
+
   try {
-    const response = await fetch('https://api.github.com/user/repos', {
+    // First, check if username is an org or the authenticated user
+    const userResponse = await fetch('https://api.github.com/user', { headers });
+    if (!userResponse.ok) {
+      return { success: false, error: 'Invalid GitHub token. Check your token and try again.' };
+    }
+    const userData = (await userResponse.json()) as { login: string };
+    const authenticatedUser = userData.login;
+
+    // Determine the correct API endpoint
+    let apiUrl: string;
+    if (username.toLowerCase() === authenticatedUser.toLowerCase()) {
+      // Creating under personal account
+      apiUrl = 'https://api.github.com/user/repos';
+    } else {
+      // Creating under an organization
+      apiUrl = `https://api.github.com/orgs/${username}/repos`;
+    }
+
+    const response = await fetch(apiUrl, {
       method: 'POST',
-      headers: {
-        Authorization: `token ${token}`,
-        'Content-Type': 'application/json',
-        'User-Agent': 'i4tow-cli',
-      },
+      headers,
       body: JSON.stringify({ name, private: false }),
     });
 
@@ -90,10 +113,20 @@ async function createGitHubRepo(
         return { success: false, error: 'Invalid GitHub token. Check your token and try again.' };
       }
       if (data.message === 'Not Found') {
-        return { success: false, error: 'GitHub API error. Ensure token has "repo" scope.' };
+        return {
+          success: false,
+          error: `Cannot create repo under "${username}". Ensure token has access to this account/org.`,
+        };
       }
       return { success: false, error: data.message || 'Failed to create repository' };
     }
+
+    // Verify the repo was created by checking the response
+    const repoData = (await response.json()) as { full_name?: string };
+    if (!repoData.full_name) {
+      return { success: false, error: 'Repository creation failed - no repo returned' };
+    }
+
     return { success: true };
   } catch (error) {
     if (error instanceof Error) {
@@ -144,7 +177,7 @@ export async function createAlbum(
   try {
     // Step 1: Create GitHub repo
     progress('Creating repository', fullRepoName);
-    const createResult = await createGitHubRepo(fullRepoName, token);
+    const createResult = await createGitHubRepo(fullRepoName, token, username);
     if (!createResult.success) {
       return {
         name: fullRepoName,
@@ -157,6 +190,10 @@ export async function createAlbum(
     }
     if (createResult.alreadyExists) {
       progress('Repository exists', 'Using existing repository');
+    } else {
+      // Wait for GitHub to provision the new repo
+      progress('Waiting for GitHub', 'Repository provisioning...');
+      await sleep(3000);
     }
 
     // Step 2: Clone template
@@ -194,7 +231,23 @@ export async function createAlbum(
     await localGit.addRemote('origin', repoUrl);
     await localGit.add('.');
     await localGit.commit(`${photos.length} photos added via i4tow`);
-    await localGit.push('origin', 'main', ['--set-upstream', '--force']);
+
+    // Push with retry logic (GitHub may need more time to provision)
+    let pushAttempts = 0;
+    const maxAttempts = 3;
+    while (pushAttempts < maxAttempts) {
+      try {
+        await localGit.push('origin', 'main', ['--set-upstream', '--force']);
+        break;
+      } catch (pushError) {
+        pushAttempts++;
+        if (pushAttempts >= maxAttempts) {
+          throw pushError;
+        }
+        progress('Retrying push', `Attempt ${pushAttempts + 1}/${maxAttempts}...`);
+        await sleep(2000);
+      }
+    }
 
     // Cleanup temp dir
     try {

@@ -221,9 +221,15 @@ describe('createAlbum', () => {
   });
 
   it('should create GitHub repo and clone template', async () => {
+    // First call: /user to check authenticated user
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ id: 123 }),
+      json: () => Promise.resolve({ login: 'testuser' }),
+    });
+    // Second call: create repo
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ id: 123, full_name: 'testuser/i4tow-MyAlbum' }),
     });
 
     const result = await createAlbum('/photos', 'MyAlbum', {
@@ -245,6 +251,12 @@ describe('createAlbum', () => {
   });
 
   it('should handle repo already exists gracefully', async () => {
+    // First call: /user to check authenticated user
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ login: 'testuser' }),
+    });
+    // Second call: repo already exists
     mockFetch.mockResolvedValueOnce({
       ok: false,
       json: () => Promise.resolve({
@@ -262,6 +274,7 @@ describe('createAlbum', () => {
   });
 
   it('should return error if GitHub API fails', async () => {
+    // First call: /user fails with bad credentials
     mockFetch.mockResolvedValueOnce({
       ok: false,
       json: () => Promise.resolve({
@@ -291,9 +304,15 @@ describe('createAlbum', () => {
   });
 
   it('should clone template repo with depth 1', async () => {
+    // First call: /user to check authenticated user
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ id: 123 }),
+      json: () => Promise.resolve({ login: 'testuser' }),
+    });
+    // Second call: create repo
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ id: 123, full_name: 'testuser/i4tow-MyAlbum' }),
     });
 
     await createAlbum('/photos', 'MyAlbum', {
@@ -310,9 +329,15 @@ describe('createAlbum', () => {
   });
 
   it('should initialize git repo and push', async () => {
+    // First call: /user to check authenticated user
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ id: 123 }),
+      json: () => Promise.resolve({ login: 'testuser' }),
+    });
+    // Second call: create repo
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ id: 123, full_name: 'testuser/i4tow-MyAlbum' }),
     });
 
     await createAlbum('/photos', 'MyAlbum', {
@@ -346,9 +371,15 @@ describe('createAlbum', () => {
   });
 
   it('should handle git clone failure', async () => {
+    // First call: /user to check authenticated user
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ id: 123 }),
+      json: () => Promise.resolve({ login: 'testuser' }),
+    });
+    // Second call: create repo
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ id: 123, full_name: 'testuser/i4tow-MyAlbum' }),
     });
 
     const git = simpleGit();
@@ -364,9 +395,15 @@ describe('createAlbum', () => {
   });
 
   it('should call onProgress callback during processing', async () => {
+    // First call: /user to check authenticated user
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ id: 123 }),
+      json: () => Promise.resolve({ login: 'testuser' }),
+    });
+    // Second call: create repo
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ id: 123, full_name: 'testuser/i4tow-MyAlbum' }),
     });
 
     const progressCalls: string[] = [];
@@ -377,6 +414,7 @@ describe('createAlbum', () => {
     });
 
     expect(progressCalls).toContain('Creating repository');
+    expect(progressCalls).toContain('Waiting for GitHub');
     expect(progressCalls).toContain('Downloading template');
     expect(progressCalls).toContain('Preparing album');
     expect(progressCalls).toContain('Copying photos');
@@ -384,9 +422,15 @@ describe('createAlbum', () => {
   });
 
   it('should copy photos to public/photos/raw2', async () => {
+    // First call: /user to check authenticated user
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ id: 123 }),
+      json: () => Promise.resolve({ login: 'testuser' }),
+    });
+    // Second call: create repo
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ id: 123, full_name: 'testuser/i4tow-MyAlbum' }),
     });
 
     await createAlbum('/photos', 'MyAlbum', {

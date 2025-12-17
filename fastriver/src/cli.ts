@@ -32,7 +32,7 @@ function printDivider() {
 program
   .name('i4tow')
   .description('Create photo albums backed by GitHub repos')
-  .version('0.0.1')
+  .version('0.0.13', '-v, --version')
   .option('-t, --token <token>', 'GitHub token (or set GITHUB_TOKEN env)')
   .option('-u, --username <username>', 'GitHub username')
   .option('-d, --dry-run', 'Preview without making changes')
