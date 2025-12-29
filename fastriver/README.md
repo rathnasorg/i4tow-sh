@@ -5,7 +5,7 @@
 [![npm version](https://img.shields.io/npm/v/@rathnasorg/i4tow.svg)](https://www.npmjs.com/package/@rathnasorg/i4tow)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-[Live Demo](https://rathnasorg.github.io/i4tow/a/i4tow-album) | [View Albums](https://rathnasorg.github.io/i4tow/p/rathnasorg)
+[Live Demo](https://i4tow.date/a/i4tow-album) | [View Albums](https://i4tow.date/p/rathnasorg)
 
 ---
 
@@ -40,7 +40,7 @@ i4tow /path/to/photos --token YOUR_GITHUB_TOKEN --username YOUR_GITHUB_USERNAME
 
 That's it! Your album is live at:
 ```
-https://rathnasorg.github.io/i4tow/a/i4tow-[folder-name]
+https://i4tow.date/a/i4tow-[folder-name]
 ```
 
 ### Example
@@ -49,7 +49,7 @@ https://rathnasorg.github.io/i4tow/a/i4tow-[folder-name]
 i4tow "/Users/john/Photos/Smith Wedding" --token ghp_xxxx --username johnphoto
 ```
 
-Creates: `https://rathnasorg.github.io/i4tow/a/i4tow-SmithWedding`
+Creates: `https://i4tow.date/a/i4tow-SmithWedding`
 
 ---
 
@@ -98,7 +98,7 @@ Auto-playing slideshow with shuffle - perfect for events or big screens.
 Play through ALL your albums at once - great for portfolios.
 
 ### View All Albums
-See every album at: `https://rathnasorg.github.io/i4tow/p/YOUR_USERNAME`
+See every album at: `https://i4tow.date/p/YOUR_USERNAME`
 
 ### Easy Sharing
 Direct links + QR codes for instant sharing with clients.
