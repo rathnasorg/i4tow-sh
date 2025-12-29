@@ -30,9 +30,9 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/rathnasorg/i4towsh.git"
+    "url": "https://github.com/rathnasorg/i4tow-sh.git"
   },
-  "homepage": "https://rathnasorg.github.io/i4tow/p/rathnasorg",
+  "homepage": "https://i4tow.date/p/rathnasorg",
   "devDependencies": {
     "@types/node": "^20.10.0",
     "tsup": "^8.0.0",
